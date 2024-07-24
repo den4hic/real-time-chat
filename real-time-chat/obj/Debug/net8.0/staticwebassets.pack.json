@@ -1,0 +1,45 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\Denys\\source\\repos\\real-time-chat\\real-time-chat\\obj\\Debug\\net8.0\\scopedcss\\projectbundle\\real-time-chat.bundle.scp.css",
+      "PackagePath": "staticwebassets\\real-time-chat.bundle.scp.css"
+    },
+    {
+      "Id": "C:\\Users\\Denys\\source\\repos\\real-time-chat\\real-time-chat\\wwwroot\\app.css",
+      "PackagePath": "staticwebassets\\app.css"
+    },
+    {
+      "Id": "C:\\Users\\Denys\\source\\repos\\real-time-chat\\real-time-chat\\wwwroot\\bootstrap\\bootstrap.min.css",
+      "PackagePath": "staticwebassets\\bootstrap\\bootstrap.min.css"
+    },
+    {
+      "Id": "C:\\Users\\Denys\\source\\repos\\real-time-chat\\real-time-chat\\wwwroot\\bootstrap\\bootstrap.min.css.map",
+      "PackagePath": "staticwebassets\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Id": "C:\\Users\\Denys\\source\\repos\\real-time-chat\\real-time-chat\\wwwroot\\favicon.png",
+      "PackagePath": "staticwebassets\\favicon.png"
+    },
+    {
+      "Id": "C:\\Users\\Denys\\source\\repos\\real-time-chat\\real-time-chat\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.real-time-chat.props",
+      "PackagePath": "build\\real-time-chat.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.real-time-chat.props",
+      "PackagePath": "buildMultiTargeting\\real-time-chat.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.real-time-chat.props",
+      "PackagePath": "buildTransitive\\real-time-chat.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.real-time-chat.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

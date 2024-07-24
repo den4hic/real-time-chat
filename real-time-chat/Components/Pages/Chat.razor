@@ -1,0 +1,140 @@
+﻿@page "/chat"
+@using Microsoft.AspNetCore.SignalR.Client
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Chat</PageTitle>
+
+<div class="chat-container">
+    @if (string.IsNullOrEmpty(userName))
+    {
+        <div class="form-group">
+            <label>
+                Enter your name:
+                <input placeholder="Your name" @bind="userInput" />
+            </label>
+            <button @onclick="SetUserName" disabled="@string.IsNullOrEmpty(userInput)">Join Chat</button>
+        </div>
+    }
+    else
+    {
+        <div>
+            <div class="form-group">
+                <label>
+                    Message:
+                    <input placeholder="Type your message" @bind="messageInput" size="50" />
+                </label>
+                <button @onclick="Send" disabled="@(!IsConnected)">Send</button>
+            </div>
+
+            <hr>
+
+            <ul class="messages-list">
+                @foreach (var message in messages)
+                {
+                    <li>@message</li>
+                }
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private HubConnection? hubConnection;
+    private List<string> messages = new List<string>();
+    private string? userInput;
+    private string? messageInput;
+    private string? userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+            .Build();
+
+        hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        {
+            var encodedMsg = $"{user}: {message}";
+            messages.Add(encodedMsg);
+            InvokeAsync(StateHasChanged);
+        });
+
+        hubConnection.On<string>("UserJoined", (user) =>
+        {
+            var joinMessage = $"{user} has joined the chat.";
+            messages.Add(joinMessage);
+            InvokeAsync(StateHasChanged);
+        });
+
+        hubConnection.On<string>("UserLeft", (user) =>
+        {
+            var leaveMessage = $"{user} has left the chat.";
+            messages.Add(leaveMessage);
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+        StateHasChanged();
+
+    }
+
+    private async Task SetUserName()
+    {
+        if (!string.IsNullOrEmpty(userInput))
+        {
+            userName = userInput;
+            await hubConnection.SendAsync("JoinChat", userName);
+            StateHasChanged();
+        }
+    }
+
+    private async Task Send()
+    {
+        if (!string.IsNullOrEmpty(messageInput))
+        {
+            if (hubConnection is not null)
+            {
+                await hubConnection.SendAsync("SendMessage", userName, messageInput);
+                messageInput = string.Empty;
+            }
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null && !string.IsNullOrEmpty(userName))
+        {
+            await hubConnection.SendAsync("UserLeft", userName);
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
+
+<style>
+    .chat-container {
+        width: 50%;
+        margin: auto;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .messages-list {
+        list-style-type: none;
+        padding: 0;
+    }
+
+        .messages-list li {
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+</style>
