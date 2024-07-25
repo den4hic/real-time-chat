@@ -2,7 +2,6 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @rendermode InteractiveServer
 @inject NavigationManager Navigation
-@inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -10,34 +9,28 @@
 <div class="chat-container">
     @if (string.IsNullOrEmpty(userName))
     {
-        <div class="form-group">
-            <label>
-                Enter your name:
-                <input placeholder="Your name" @bind="userInput" />
-            </label>
-            <button @onclick="SetUserName" disabled="@string.IsNullOrEmpty(userInput)">Join Chat</button>
+        <div class="form-group message-form">
+            <input placeholder="Your name" @bind="userInput" size="50" class="message-input" />
+            <button @onclick="SetUserName" class="send-button">Join</button>
         </div>
     }
     else
     {
-        <div>
-            <div class="form-group">
-                <label>
-                    Message:
-                    <input placeholder="Type your message" @bind="messageInput" size="50" />
-                </label>
-                <button @onclick="Send" disabled="@(!IsConnected)">Send</button>
-            </div>
+    <div>
+        <ul class="messages-list">
+            @foreach (var message in messages)
+            {
+                <li class="@GetMessageClass(message)">@message</li>    
+            }
+        </ul>
 
-            <hr>
+        <hr/>
 
-            <ul class="messages-list">
-                @foreach (var message in messages)
-                {
-                    <li>@message</li>
-                }
-            </ul>
+        <div class="form-group message-form">
+            <input placeholder="Type your message" @bind="messageInput" size="50" class="message-input" />
+            <button @onclick="Send" disabled="@(!IsConnected)" class="send-button">Send</button>
         </div>
+    </div>
     }
 </div>
 
@@ -77,12 +70,11 @@
 
         await hubConnection.StartAsync();
         StateHasChanged();
-
     }
 
     private async Task SetUserName()
     {
-        if (!string.IsNullOrEmpty(userInput))
+        if (!string.IsNullOrEmpty(userInput) && hubConnection != null)
         {
             userName = userInput;
             await hubConnection.SendAsync("JoinChat", userName);
@@ -103,8 +95,7 @@
     }
 
     public bool IsConnected =>
-        hubConnection?.State == HubConnectionState.Connected;
-
+            hubConnection?.State == HubConnectionState.Connected;
 
     public async ValueTask DisposeAsync()
     {
@@ -112,6 +103,22 @@
         {
             await hubConnection.SendAsync("UserLeft", userName);
             await hubConnection.DisposeAsync();
+        }
+    }
+
+    private string GetMessageClass(string message)
+    {
+        if (message.Contains("has joined the chat") || message.Contains("has left the chat"))
+        {
+            return "user-status";
+        }
+        else if (message.StartsWith($"{userName}:"))
+        {
+            return "my-message";
+        }
+        else
+        {
+            return "other-message";
         }
     }
 }
@@ -126,15 +133,60 @@
         margin-bottom: 10px;
     }
 
+    .message-form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .message-input {
+        flex-grow: 1;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+    }
+
+    .send-button {
+        padding: 10px 20px;
+        border-radius: 5px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    .send-button:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
+    }
+
     .messages-list {
         list-style-type: none;
         padding: 0;
     }
 
-        .messages-list li {
-            padding: 5px 10px;
-            margin-bottom: 5px;
-            background-color: #f1f1f1;
-            border-radius: 5px;
-        }
+    .messages-list li {
+        padding: 5px 10px;
+        margin-bottom: 5px;
+        border-radius: 5px;
+    }
+
+    .user-status {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .my-message {
+        background-color: #cce5ff;
+        color: #004085;
+        text-align: right;
+    }
+
+    .other-message {
+        background-color: #f1f1f1;
+        color: #333;
+        text-align: left;
+    }
 </style>
