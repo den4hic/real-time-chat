@@ -1,6 +1,10 @@
 ﻿@page "/chat"
 @using Microsoft.AspNetCore.SignalR.Client
+@using real_time_chat.Models
+@using real_time_chat.Services
 @rendermode InteractiveServer
+@inject IUserService UserService
+@inject IMessageService MessageService
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
 
@@ -22,7 +26,7 @@
                 <ul>
                     @foreach (var user in _users)
                     {
-                        <li>@user</li>
+                        <li>@user.Name</li>
                     }
                 </ul>
             </div>
@@ -30,7 +34,7 @@
                 <ul class="messages-list">
                     @foreach (var message in _messages)
                     {
-                        <li class="@GetMessageClass(message)">@message</li>
+                        <li class="@GetMessageClass(message)">@message.User.Name: @message.Text (@message.SentDate)</li>
                     }
                 </ul>
 
@@ -47,11 +51,12 @@
 
 @code {
     private HubConnection? _hubConnection;
-    private readonly List<string> _messages = new List<string>();
-    private List<string> _users = new List<string>();
+    private IList<Message> _messages = new List<Message>();
+    private IList<User> _users = new List<User>();
     private string? _userInput;
     private string? _messageInput;
     private string? _userName;
+    private User? _currentUser;
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,35 +64,46 @@
             .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
             .Build();
 
-        _hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        _hubConnection.On<string, string>("ReceiveMessage", async (user, message) =>
         {
-            var encodedMsg = $"{user}: {message}";
-            _messages.Add(encodedMsg);
-            InvokeAsync(StateHasChanged);
+            await LoadMessages();
+            await InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<string>("UserJoined", (user) =>
         {
             var joinMessage = $"{user} has joined the chat.";
-            _messages.Add(joinMessage);
+            _messages.Add(new Message { Text = joinMessage, SentDate = DateTime.Now, User = new User { Name = "System" } });
             InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<string>("UserLeft", (user) =>
         {
             var leaveMessage = $"{user} has left the chat.";
-            _messages.Add(leaveMessage);
+            _messages.Add(new Message { Text = leaveMessage, SentDate = DateTime.Now, User = new User { Name = "System" } });
             InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<List<string>>("UpdateUserList", (users) =>
         {
-            _users = users;
+            _users = users.Select(u => new User { Name = u }).ToList();
             InvokeAsync(StateHasChanged);
         });
 
         await _hubConnection.StartAsync();
+        await LoadMessages();
+        await LoadUsers();
         StateHasChanged();
+    }
+
+    private async Task LoadMessages()
+    {
+        _messages = await this.MessageService.GetMessages();
+    }
+
+    private async Task LoadUsers()
+    {
+        _users = await this.UserService.GetUsers();
     }
 
     private async Task SetUserName()
@@ -95,6 +111,10 @@
         if (!string.IsNullOrEmpty(_userInput) && _hubConnection != null)
         {
             _userName = _userInput;
+            _currentUser = new User { Name = _userName };
+
+            _currentUser = await this.UserService.PostUser(_currentUser);
+
             await _hubConnection.SendAsync("JoinChat", _userName);
             StateHasChanged();
         }
@@ -102,17 +122,25 @@
 
     private async Task Send()
     {
-        if (!string.IsNullOrEmpty(_messageInput))
+        if (!string.IsNullOrEmpty(_messageInput) && _hubConnection != null && _currentUser != null)
         {
-            if (_hubConnection is not null)
+            var message = new Message
             {
-                await _hubConnection.SendAsync("SendMessage", _userName, _messageInput);
-                _messageInput = string.Empty;
-            }
+                Text = _messageInput,
+                SentDate = DateTime.Now,
+                UserId = _currentUser.Id,
+                User = _currentUser
+            };
+            await this.MessageService.PostMessage(message);
+            
+            await _hubConnection.SendAsync("SendMessage", _userName, _messageInput);
+            _messageInput = string.Empty; 
+            await LoadMessages();
+            
         }
     }
 
-    public bool IsConnected =>
+    private bool IsConnected =>
             _hubConnection?.State == HubConnectionState.Connected;
 
     public async ValueTask DisposeAsync()
@@ -124,13 +152,13 @@
         }
     }
 
-    private string GetMessageClass(string message)
+    private string GetMessageClass(Message message)
     {
-        if (message.Contains("has joined the chat") || message.Contains("has left the chat"))
+        if (message.Text.Contains("has joined the chat") || message.Text.Contains("has left the chat"))
         {
             return "user-status";
         }
-        else if (message.StartsWith($"{_userName}:"))
+        else if (message.User.Name == _userName)
         {
             return "my-message";
         }
@@ -143,6 +171,7 @@
 
 <style>
     .chat-container {
+        width: 50%;
         margin: auto;
     }
 
@@ -208,8 +237,7 @@
     }
 
     .chat-room {
-        display: grid;
-        grid-template-columns: 1fr 4fr;
+        display: flex;
     }
 
     .users-list {
@@ -229,9 +257,7 @@
     .users-list li {
         padding: 5px;
         background-color: #f8f9fa;
-        color: green;
         margin-bottom: 5px;
         border-radius: 5px;
-        font-size: 20px;
     }
 </style>
