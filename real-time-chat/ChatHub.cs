@@ -1,34 +1,49 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using System.Collections.Concurrent;
 
 namespace BlazorSignalRApp.Hubs;
 
 public class ChatHub : Hub<IChatClient>
 {
-	public async Task SendMessage(string user, string message)
-	{
-		await Clients.All.ReceiveMessage(user, message);
+    private static readonly ConcurrentDictionary<string, string> Users = new ConcurrentDictionary<string, string>();
+    
+    public override Task OnDisconnectedAsync(Exception exception)
+    {
+        if (Users.TryRemove(Context.ConnectionId, out string userName))
+        {
+            Clients.All.UserLeft(userName);
+            Clients.All.UpdateUserList(Users.Values.ToList());
+        }
 
-		await base.OnConnectedAsync();
-	}
-
-	public async Task JoinChat(string user)
-	{
-        await Clients.All.UserJoined(user);
-
-        await base.OnConnectedAsync();
+        return base.OnDisconnectedAsync(exception);
     }
 
-	public async Task LeaveChat(string user)
-	{
-        await Clients.All.UserLeft(user);
+    public async Task SendMessage(string user, string message)
+    {
+        await Clients.All.ReceiveMessage(user, message);
+    }
 
-        await base.OnDisconnectedAsync(new Exception("User left the chat"));
+    public async Task JoinChat(string user)
+    {
+        Users[Context.ConnectionId] = user;
+        await Clients.All.UserJoined(user);
+        await Clients.All.UpdateUserList(Users.Values.ToList());
+    }
+
+    public async Task LeaveChat(string user)
+    {
+        if (Users.TryRemove(Context.ConnectionId, out _))
+        {
+            await Clients.All.UserLeft(user);
+            await Clients.All.UpdateUserList(Users.Values.ToList());
+        }
     }
 }
 
 public interface IChatClient
 {
     Task ReceiveMessage(string user, string message);
-	Task UserJoined(string user);
-	Task UserLeft(string user);
+    Task UserJoined(string user);
+    Task UserLeft(string user);
+    Task UpdateUserList(List<string> users);
 }
