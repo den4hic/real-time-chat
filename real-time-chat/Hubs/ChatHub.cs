@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 
-namespace BlazorSignalRApp.Hubs;
+namespace real_time_chat.Hubs;
 
 public class ChatHub : Hub<IChatClient>
 {
