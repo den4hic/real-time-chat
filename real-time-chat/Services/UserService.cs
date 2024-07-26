@@ -27,7 +27,9 @@ namespace real_time_chat.Services
         {
             if (_context.Users.Any(u => u.Name == user.Name))
             {
-                return await _context.Users.Include(u => u.Messages).FirstOrDefaultAsync(u => u.Name == user.Name);
+                var existedUser = await _context.Users.Include(u => u.Messages).FirstOrDefaultAsync(u => u.Name == user.Name);
+
+                if (existedUser != null) return existedUser;
             }
             _context.Users.Add(user);
             await _context.SaveChangesAsync();

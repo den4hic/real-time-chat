@@ -34,7 +34,7 @@
                 <ul class="messages-list">
                     @foreach (var message in _messages)
                     {
-                        <li class="@GetMessageClass(message)">@message.User.Name: @message.Text (@message.SentDate)</li>
+                        <li class="@GetMessageClass(message)">@(message.User.Name == "" ? "" : message.User.Name + ": ")@message.Text (@message.SentDate)</li>
                     }
                 </ul>
 
@@ -64,23 +64,23 @@
             .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
             .Build();
 
-        _hubConnection.On<string, string>("ReceiveMessage", async (user, message) =>
+        _hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
         {
-            await LoadMessages();
-            await InvokeAsync(StateHasChanged);
+            _messages.Add(new Message { Text = message, SentDate = DateTime.Now, User = new User { Name = user } });
+            InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<string>("UserJoined", (user) =>
         {
             var joinMessage = $"{user} has joined the chat.";
-            _messages.Add(new Message { Text = joinMessage, SentDate = DateTime.Now, User = new User { Name = "System" } });
+            _messages.Add(new Message { Text = joinMessage, SentDate = DateTime.Now, User = new User { Name = "" } });
             InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<string>("UserLeft", (user) =>
         {
             var leaveMessage = $"{user} has left the chat.";
-            _messages.Add(new Message { Text = leaveMessage, SentDate = DateTime.Now, User = new User { Name = "System" } });
+            _messages.Add(new Message { Text = leaveMessage, SentDate = DateTime.Now, User = new User { Name = "" } });
             InvokeAsync(StateHasChanged);
         });
 
@@ -135,7 +135,6 @@
             
             await _hubConnection.SendAsync("SendMessage", _userName, _messageInput);
             _messageInput = string.Empty; 
-            await LoadMessages();
             
         }
     }
@@ -154,7 +153,8 @@
 
     private string GetMessageClass(Message message)
     {
-        if (message.Text.Contains("has joined the chat") || message.Text.Contains("has left the chat"))
+        
+        if (message.Text != null && (message.Text.Contains("has joined the chat") || message.Text.Contains("has left the chat")))
         {
             return "user-status";
         }
@@ -171,7 +171,6 @@
 
 <style>
     .chat-container {
-        width: 50%;
         margin: auto;
     }
 
@@ -237,7 +236,8 @@
     }
 
     .chat-room {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr 3fr;
     }
 
     .users-list {
