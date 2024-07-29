@@ -1,7 +1,8 @@
-﻿@page "/chat"
+﻿@page "/"
 @using Microsoft.AspNetCore.SignalR.Client
 @using real_time_chat.Models
 @using real_time_chat.Services
+@using real_time_chat.TextAnalysis
 @rendermode InteractiveServer
 @inject IUserService UserService
 @inject IMessageService MessageService
@@ -34,7 +35,15 @@
                 <ul class="messages-list">
                     @foreach (var message in _messages)
                     {
-                        <li class="@GetMessageClass(message)">@(message.User.Name == "" ? "" : message.User.Name + ": ")@message.Text (@message.SentDate)</li>
+                        @if (message.User.Name == "")
+                        {
+                            <li class="@GetMessageClass(message)">@message.Text (@message.SentDate)</li>
+                        }
+                        else
+                        {
+                            <li class="@GetMessageClass(message)">@message.User.Name : @message.Text ( й@message.SentDate) @(message.Sentiment == "Neutral" ? "\ud83d\ude10" : @message.Sentiment == "Positive" ? "✨" : "\ud83d\ude21" )</li>
+                        }
+                        
                     }
                 </ul>
 
@@ -57,6 +66,7 @@
     private string? _messageInput;
     private string? _userName;
     private User? _currentUser;
+    private readonly TextAnalysis _textAnalysis = new TextAnalysis();
 
     protected override async Task OnInitializedAsync()
     {
@@ -66,7 +76,9 @@
 
         _hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
         {
-            _messages.Add(new Message { Text = message, SentDate = DateTime.Now, User = new User { Name = user } });
+            var sentiment = _textAnalysis.SentimentAnalysis(message);
+            Console.WriteLine(sentiment);
+            _messages.Add(new Message { Text = message, SentDate = DateTime.Now, User = new User { Name = user }, Sentiment = sentiment});
             InvokeAsync(StateHasChanged);
         });
 
@@ -129,7 +141,8 @@
                 Text = _messageInput,
                 SentDate = DateTime.Now,
                 UserId = _currentUser.Id,
-                User = _currentUser
+                User = _currentUser,
+                Sentiment = _textAnalysis.SentimentAnalysis(_messageInput)
             };
             await this.MessageService.PostMessage(message);
             
