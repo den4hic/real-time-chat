@@ -2,7 +2,6 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using real_time_chat.Models
 @using real_time_chat.Services
-@using real_time_chat.TextAnalysis
 @rendermode InteractiveServer
 @inject IUserService UserService
 @inject IMessageService MessageService
@@ -14,47 +13,48 @@
 <div class="chat-container">
     @if (string.IsNullOrEmpty(_userName))
     {
-        <div class="form-group message-form">
-            <input placeholder="Your name" @bind="_userInput" size="50" class="message-input" @onkeyup="@(e => HandleKeyDown(e, SetUserName))"/>
-            <button @onclick="SetUserName" class="send-button">Join</button>
-        </div>
+    <div class="form-group message-form">
+        <input placeholder="Your name" @bind="_userInput" size="50" class="message-input" @onkeyup="@(e => HandleKeyDown(e, SetUserName))"/>
+        <button @onclick="SetUserName" class="send-button">Join</button>
+    </div>
     }
     else
     {
-        <div class="chat-room">
-            <div class="users-list">
-                <h4>Active Users</h4>
-                <ul>
-                    @foreach (var user in _users)
-                    {
-                        <li>@user.Name</li>
-                    }
-                </ul>
-            </div>
-            <div class="messages-container">
+    <div class="chat-room">
+        <div class="users-list">
+            <h4>Active Users</h4>
+            <ul>
+                @foreach (var user in _users)
+                {
+                <li>@user.Name</li>
+                }
+            </ul>
+        </div>
+        <div class="messages-container">
+            <div class="messages-list-container">
                 <ul class="messages-list">
                     @foreach (var message in _messages)
                     {
-                        @if (message.User.Name == "")
-                        {
-                            <li class="@GetMessageClass(message)">@message.Text (@message.SentDate)</li>
-                        }
-                        else
-                        {
-                            <li class="@GetMessageClass(message)">@message.User.Name : @message.Text (@message.SentDate) @(message.Sentiment == "Neutral" ? "\ud83d\ude10" : @message.Sentiment == "Positive" ? "✨" : "\ud83d\ude21" )</li>
-                        }
-                        
+                    @if (message.User.Name == "")
+                    {
+                    <li class="@GetMessageClass(message)">@message.Text (@message.SentDate)</li>
+                    }
+                    else
+                    {
+                    <li class="@GetMessageClass(message)">@message.User.Name : @message.Text (@message.SentDate) @(message.Sentiment == "Neutral" ? "\ud83d\ude10" : @message.Sentiment == "Positive" ? "✨" : "\ud83d\ude21" )</li>
+                    }
                     }
                 </ul>
+            </div>
 
-                <hr/>
+            <hr/>
 
-                <div class="form-group message-form">
-                    <input placeholder="Type your message" @bind="_messageInput" size="50" class="message-input" @onkeyup="@(e => HandleKeyDown(e, Send))"/>
-                    <button class="send-button" disabled="@(!IsConnected)" @onclick="Send">Send</button>
-                </div>
+            <div class="form-group message-form">
+                <input placeholder="Type your message" @bind="_messageInput" size="50" class="message-input" @onkeyup="@(e => HandleKeyDown(e, Send))"/>
+                <button class="send-button" disabled="@(!IsConnected)" @onclick="Send">Send</button>
             </div>
         </div>
+    </div>
     }
 </div>
 
@@ -148,7 +148,6 @@
             
             await _hubConnection.SendAsync("SendMessage", _userName, _messageInput);
             _messageInput = string.Empty; 
-            
         }
     }
     
@@ -174,19 +173,12 @@
 
     private string GetMessageClass(Message message)
     {
-        
         if (message.Text != null && (message.Text.Contains("has joined the chat") || message.Text.Contains("has left the chat")))
         {
             return "user-status";
         }
-        else if (message.User.Name == _userName)
-        {
-            return "my-message";
-        }
-        else
-        {
-            return "other-message";
-        }
+
+        return message.User.Name != _userName ? "other-message" : "my-message";
     }
 }
 
@@ -231,6 +223,7 @@
     .messages-list {
         list-style-type: none;
         padding: 0;
+        margin: 0;
     }
 
     .messages-list li {
@@ -268,6 +261,17 @@
 
     .messages-container {
         flex: 3;
+        display: flex;
+        flex-direction: column;
+        height: 80vh;
+    }
+
+    .messages-list-container {
+        flex-grow: 1;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
     }
 
     .users-list ul {
@@ -282,3 +286,4 @@
         border-radius: 5px;
     }
 </style>
+
