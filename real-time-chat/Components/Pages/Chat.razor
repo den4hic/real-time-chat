@@ -15,7 +15,7 @@
     @if (string.IsNullOrEmpty(_userName))
     {
         <div class="form-group message-form">
-            <input placeholder="Your name" @bind="_userInput" size="50" class="message-input" />
+            <input placeholder="Your name" @bind="_userInput" size="50" class="message-input" @onkeyup="@(e => HandleKeyDown(e, SetUserName))"/>
             <button @onclick="SetUserName" class="send-button">Join</button>
         </div>
     }
@@ -41,7 +41,7 @@
                         }
                         else
                         {
-                            <li class="@GetMessageClass(message)">@message.User.Name : @message.Text ( й@message.SentDate) @(message.Sentiment == "Neutral" ? "\ud83d\ude10" : @message.Sentiment == "Positive" ? "✨" : "\ud83d\ude21" )</li>
+                            <li class="@GetMessageClass(message)">@message.User.Name : @message.Text (@message.SentDate) @(message.Sentiment == "Neutral" ? "\ud83d\ude10" : @message.Sentiment == "Positive" ? "✨" : "\ud83d\ude21" )</li>
                         }
                         
                     }
@@ -50,8 +50,8 @@
                 <hr/>
 
                 <div class="form-group message-form">
-                    <input placeholder="Type your message" @bind="_messageInput" size="50" class="message-input" />
-                    <button @onclick="Send" disabled="@(!IsConnected)" class="send-button">Send</button>
+                    <input placeholder="Type your message" @bind="_messageInput" size="50" class="message-input" @onkeyup="@(e => HandleKeyDown(e, Send))"/>
+                    <button class="send-button" disabled="@(!IsConnected)" @onclick="Send">Send</button>
                 </div>
             </div>
         </div>
@@ -66,7 +66,7 @@
     private string? _messageInput;
     private string? _userName;
     private User? _currentUser;
-    private readonly TextAnalysis _textAnalysis = new TextAnalysis();
+    private readonly TextAnalysis _textAnalysis = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -149,6 +149,14 @@
             await _hubConnection.SendAsync("SendMessage", _userName, _messageInput);
             _messageInput = string.Empty; 
             
+        }
+    }
+    
+    private async Task HandleKeyDown(KeyboardEventArgs e, Func<Task> action)
+    {
+        if (e.Key == "Enter" && IsConnected)
+        {
+            await action.Invoke();
         }
     }
 
